@@ -200,3 +200,10 @@
    - 将 CI 中 ANN 审计从 non-blocking 调整为 blocking
    - 关键校验：workflow 不再包含 `continue-on-error`，Summary 显示 `ann audit (blocking)`
    - 同步更新执行单、测试计划与证据索引口径
+
+### 8.7 ANN 阻塞门禁升级实跑记录（样例）
+
+1. workflow 变更：`.github/workflows/backend-rabbitmq-gate.yml`
+2. 云端复验 run：`https://github.com/InfiniX520/Heliora/actions/runs/23994866186`
+3. artifact：`https://github.com/InfiniX520/Heliora/actions/runs/23994866186/artifacts/6275299443`
+4. 关键步骤：`Run ANN audit (blocking)` = success
