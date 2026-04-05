@@ -7,6 +7,7 @@ on:
       - ".github/workflows/backend-rabbitmq-gate.yml"
   push:
     branches:
+      - master
       - main
       - develop
     paths:

@@ -53,15 +53,23 @@
    - git push -u origin feature/release-window-gate
 4. 在 GitHub 网页点击 Compare & pull request 创建 PR。
 
+如果出现“base 与 compare 无差异，无法创建 PR”：
+1. 在功能分支创建空提交：
+   - git commit --allow-empty -m "chore: trigger backend rabbitmq gate"
+2. 再次推送：
+   - git push
+3. 返回 GitHub 页面重新创建 PR。
+
 ---
 
 ## 4. 在网页触发并获取 CI 证据
 
-1. 打开 PR 页面 -> Checks。
-2. 等待或点击 Re-run all jobs，确保工作流 Backend RabbitMQ Gate 完整执行。
-3. 在 run 页面确认 Summary 包含：
+1. 触发方式 A（推荐）：PR 页面 -> Checks。
+2. 触发方式 B（无 PR 时可用）：直接 push 到 `master/main/develop`，然后在 Actions 页面查看 `Backend RabbitMQ Gate`。
+3. 等待或点击 Re-run all jobs，确保工作流 Backend RabbitMQ Gate 完整执行。
+4. 在 run 页面确认 Summary 包含：
    - ann audit (non-blocking)
-4. 复制两类链接：
+5. 复制两类链接：
    - CI 运行链接（run 页面 URL）
    - Artifact 链接（backend-rabbitmq-gate-reports 页面 URL）
 
@@ -83,6 +91,10 @@
 1. 在根目录执行找不到脚本：
    - 报错示例：can't open file 'E:\\Zero9\\Heliora\\scripts\\validate_env_consistency.py'
    - 处理：先进入后端目录再执行。
+   - 正确示例（在 `heliora_backend` 目录）：
+     - python scripts/validate_env_consistency.py --env-file .env
+   - 正确示例（在 `heliora_backend/scripts` 目录）：
+     - python validate_env_consistency.py --env-file ../.env
 2. Git Bash 的 python 指向 Microsoft Store：
    - 处理：用绝对路径执行
    - /e/Miniconda03/envs/Heliora/python.exe scripts/validate_env_consistency.py --env-file .env
