@@ -45,6 +45,39 @@ def load_env_file(env_file: Path) -> dict[str, str]:
     return data
 
 
+def resolve_env_file(raw_env_file: str) -> Path:
+    """Resolve env file path with a backend-root fallback for scripts cwd usage."""
+    env_path = Path(raw_env_file).expanduser()
+    candidates: list[Path] = []
+
+    if env_path.is_absolute():
+        candidates.append(env_path)
+    else:
+        candidates.append((Path.cwd() / env_path).resolve())
+        backend_root = Path(__file__).resolve().parents[1]
+        candidates.append((backend_root / env_path).resolve())
+
+    # Keep deterministic order while removing duplicates.
+    unique_candidates: list[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate not in seen:
+            unique_candidates.append(candidate)
+            seen.add(candidate)
+
+    for candidate in unique_candidates:
+        if candidate.exists():
+            return candidate
+
+    attempted = "\n  - ".join(str(item) for item in unique_candidates)
+    raise FileNotFoundError(
+        "env file not found. attempted paths:\n"
+        f"  - {attempted}\n"
+        "hint: run from backend root with --env-file .env, "
+        "or from scripts with --env-file ../.env"
+    )
+
+
 def parse_conn_url(
     name: str,
     raw_url: str,
@@ -188,8 +221,8 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    env_file = Path(args.env_file).resolve()
     try:
+        env_file = resolve_env_file(args.env_file)
         values = load_env_file(env_file)
     except FileNotFoundError as exc:
         print(f"[!] {exc}")

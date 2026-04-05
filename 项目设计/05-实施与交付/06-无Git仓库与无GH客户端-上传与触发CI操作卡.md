@@ -96,6 +96,8 @@
      - python scripts/validate_env_consistency.py --env-file .env
    - 正确示例（在 `heliora_backend/scripts` 目录）：
      - python validate_env_consistency.py --env-file ../.env
+    - 兼容说明（2026-04-05 已增强脚本）：
+       - 在 `heliora_backend/scripts` 目录执行 `python validate_env_consistency.py --env-file .env` 也会自动回退到 `heliora_backend/.env`
 2. Git Bash 的 python 指向 Microsoft Store：
    - 处理：用绝对路径执行
    - /e/Miniconda03/envs/Heliora/python.exe scripts/validate_env_consistency.py --env-file .env
