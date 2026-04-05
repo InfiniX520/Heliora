@@ -158,6 +158,7 @@ jobs:
         with:
           name: backend-rabbitmq-gate-reports
           path: heliora_backend/.ci-reports
+          include-hidden-files: true
           if-no-files-found: warn
 
       - name: Publish gate summary
