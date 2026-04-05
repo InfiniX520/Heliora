@@ -106,8 +106,9 @@ jobs:
         id: rabbitmq_gate
         env:
           RABBITMQ_E2E_REQUIRED: "true"
-        run: python -m pytest tests/test_tasks_rabbitmq_e2e.py -q -rA \
-          --junitxml=.ci-reports/rabbitmq_e2e.xml
+        run: |
+          python -m pytest tests/test_tasks_rabbitmq_e2e.py -q -rA \
+            --junitxml=.ci-reports/rabbitmq_e2e.xml
 
       - name: Run RabbitMQ + PostgreSQL integration gate (required)
         id: pg_rabbitmq_gate
