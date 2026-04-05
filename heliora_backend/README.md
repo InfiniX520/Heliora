@@ -376,5 +376,5 @@ All three VM helpers now remove host-specific absolute SSH defaults and use a sh
 11. CI exports JUnit reports and coverage xml into `.ci-reports/`.
 12. CI uploads `.ci-reports/` as artifact `backend-rabbitmq-gate-reports`.
 13. CI writes a gate outcome table into GitHub job summary for reviewer traceability.
-14. CI runs ANN audit in non-blocking mode: `python -m ruff check app tests scripts --select ANN` and stores output in `.ci-reports/ann_audit.txt`.
+14. CI runs ANN audit as a blocking gate: `python -m ruff check app tests scripts --select ANN` and stores output in `.ci-reports/ann_audit.txt`.
 15. Any blocking gate failure still blocks the workflow.

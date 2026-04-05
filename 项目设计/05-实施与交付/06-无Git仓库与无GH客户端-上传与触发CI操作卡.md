@@ -69,7 +69,7 @@
 2. 触发方式 B（无 PR 时可用）：直接 push 到 `master/main/develop`，然后在 Actions 页面查看 `Backend RabbitMQ Gate`。
 3. 等待或点击 Re-run all jobs，确保工作流 Backend RabbitMQ Gate 完整执行。
 4. 在 run 页面确认 Summary 包含：
-   - ann audit (non-blocking)
+   - ann audit (blocking)
 5. 复制两类链接：
    - CI 运行链接（run 页面 URL）
    - Artifact 链接（backend-rabbitmq-gate-reports 页面 URL）
@@ -198,4 +198,5 @@
    - `07-发布证据索引与检索指南.md`
 5. 当第二窗口稳定性确认完成（满足“2 个窗口稳定”）后，执行 ANN 审计升级：
    - 将 CI 中 ANN 审计从 non-blocking 调整为 blocking
+   - 关键校验：workflow 不再包含 `continue-on-error`，Summary 显示 `ann audit (blocking)`
    - 同步更新执行单、测试计划与证据索引口径

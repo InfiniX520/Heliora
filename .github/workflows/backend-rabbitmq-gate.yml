@@ -141,16 +141,12 @@ jobs:
             --cov-fail-under=70 -q \
             --junitxml=.ci-reports/coverage_tests.xml
 
-      - name: Run ANN audit (non-blocking)
+      - name: Run ANN audit (blocking)
         id: ann_audit
         if: always()
-        continue-on-error: true
         run: |
-          set +e
+          set -euo pipefail
           python -m ruff check app tests scripts --select ANN | tee .ci-reports/ann_audit.txt
-          exit_code=${PIPESTATUS[0]}
-          echo "ann_exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
-          exit ${exit_code}
 
       - name: Upload gate reports artifact
         if: always()
@@ -176,5 +172,5 @@ jobs:
             echo "| rabbitmq e2e | ${{ steps.rabbitmq_gate.outcome }} |"
             echo "| rabbitmq + postgres integration | ${{ steps.pg_rabbitmq_gate.outcome }} |"
             echo "| coverage | ${{ steps.coverage_gate.outcome }} |"
-            echo "| ann audit (non-blocking) | ${{ steps.ann_audit.outcome }} |"
+            echo "| ann audit (blocking) | ${{ steps.ann_audit.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
