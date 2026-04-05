@@ -151,11 +151,15 @@
 
 说明：这不代表 CI 不会触发。当前 workflow 已监听 `master` push，直接推送到 `master` 也会触发 `Backend RabbitMQ Gate`。
 
+关键前提：该 workflow 配置了 `paths` 过滤，仅当改动命中 `heliora_backend/**` 或 `.github/workflows/backend-rabbitmq-gate.yml` 时才会在 push 时触发。
+
+因此，若本次只改了 `项目设计/**` 文档，push 成功也可能不会产生新的 `Backend RabbitMQ Gate` run，这是预期行为。
+
 确认方式：
 1. 打开 Actions 页面，核对最新 run（如 `23993195493`）状态与结论。
-2. 若未触发新 run，可执行空提交触发：
-   - `git commit --allow-empty -m "chore: trigger backend rabbitmq gate"`
-   - `git push origin master`
+2. 若需要立即复测门禁：
+   - 在已有 run 页面点击 `Re-run all jobs`；或
+   - 提交一个命中路径过滤的最小改动（`heliora_backend/**` 或 workflow 文件）后再 push。
 
 ### 8.4 文档回填位置
 
