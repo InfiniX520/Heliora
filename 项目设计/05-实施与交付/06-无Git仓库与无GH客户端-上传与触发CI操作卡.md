@@ -180,3 +180,22 @@
    - 生成观察窗口报告到 `heliora_backend/.release-reports/`
    - 在执行单 8.1 更新结论为“观察窗口通过并签字归档”
    - 在证据索引文档补充观察窗口证据条目
+
+### 8.6 第二发布窗口启动模板（可直接复用）
+
+1. 先做低风险启动预检（不扰动运行态）：
+   - `cd E:\Zero9\Heliora\heliora_backend`
+   - `bash scripts/preflight_release_window_vm.sh --skip-sql-review --skip-matrix --skip-rehearsal`
+2. 预检通过后，立即记录两项证据：
+   - 新报告路径（`heliora_backend/.release-reports/release_preflight_*.md`）
+   - 当前 backend gate 快照（最近 5 次 run 的 `id/status/conclusion`）
+3. 进入第二窗口正式复核前，执行全量预检：
+   - `bash scripts/preflight_release_window_vm.sh`
+4. 正式复核完成后，统一回填以下文档：
+   - `05-发布窗口切流执行单.md`
+   - `03-当前进度与下一步.md`
+   - `02-测试计划.md`
+   - `07-发布证据索引与检索指南.md`
+5. 当第二窗口稳定性确认完成（满足“2 个窗口稳定”）后，执行 ANN 审计升级：
+   - 将 CI 中 ANN 审计从 non-blocking 调整为 blocking
+   - 同步更新执行单、测试计划与证据索引口径
