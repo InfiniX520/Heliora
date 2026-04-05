@@ -167,3 +167,16 @@
 
 1. 发布执行单：`项目设计/05-实施与交付/05-发布窗口切流执行单.md`（8.1）
 2. 证据总索引：`项目设计/05-实施与交付/07-发布证据索引与检索指南.md`
+
+### 8.5 观察窗口与最终签字
+
+1. 观察窗口建议不少于 15 分钟，期间持续检查：
+   - `/health` 返回 `OK`
+   - worker 进程持续存活
+   - API/worker 日志关键错误签名命中为 0
+2. 推荐检查命令（宿主机执行）：
+   - `ssh Heliora-VM "cd /home/heliora/heliora_backend; echo 'api_error_hits='$(grep -Ei 'task state/event persistence failed|traceback|\[error\]|connection timeout|psycopg\.errors' .api.log | wc -l); echo 'worker_error_hits='$(grep -Ei 'task state/event persistence failed|traceback|\[error\]|connection timeout|psycopg\.errors' .worker.log | wc -l); tail -n 20 .api.log; echo '---'; tail -n 20 .worker.log"`
+3. 观察窗口通过后：
+   - 生成观察窗口报告到 `heliora_backend/.release-reports/`
+   - 在执行单 8.1 更新结论为“观察窗口通过并签字归档”
+   - 在证据索引文档补充观察窗口证据条目
