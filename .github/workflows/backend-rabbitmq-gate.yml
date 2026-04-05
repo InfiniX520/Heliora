@@ -1,0 +1,177 @@
+name: Backend RabbitMQ Gate
+
+on:
+  pull_request:
+    paths:
+      - "heliora_backend/**"
+      - ".github/workflows/backend-rabbitmq-gate.yml"
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "heliora_backend/**"
+      - ".github/workflows/backend-rabbitmq-gate.yml"
+
+jobs:
+  rabbitmq-e2e-gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: heliora_backend
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3.13-management
+        env:
+          RABBITMQ_DEFAULT_USER: heliora
+          RABBITMQ_DEFAULT_PASS: heliora_rmq_pass
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: heliora
+          POSTGRES_PASSWORD: heliora_pg_pass
+          POSTGRES_DB: heliora_taskdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U heliora -d heliora_taskdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - name: Prepare CI report directory
+        run: mkdir -p .ci-reports
+
+      - name: Run environment consistency gate
+        id: env_gate
+        run: python scripts/validate_env_consistency.py --env-file .env
+
+      - name: Run Ruff lint gate
+        id: ruff_gate
+        run: python -m ruff check app tests
+
+      - name: Run Mypy type-check gate
+        id: mypy_gate
+        run: python -m mypy app
+
+      - name: Run PostgreSQL task persistence smoke gate
+        id: pg_smoke_gate
+        env:
+          TASK_PERSISTENCE_BACKEND: postgres
+          TASK_QUEUE_BACKEND: memory
+          DATABASE_URL: postgresql://heliora:heliora_pg_pass@127.0.0.1:5432/heliora_taskdb
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="heliora_pg_pass"
+
+          cleanup() {
+            psql -h 127.0.0.1 -U heliora -d heliora_taskdb -v ON_ERROR_STOP=1 \
+              -f sql/task_persistence_pg/001_task_persistence_down.sql || true
+          }
+          trap cleanup EXIT
+
+          psql -h 127.0.0.1 -U heliora -d heliora_taskdb -v ON_ERROR_STOP=1 \
+            -f sql/task_persistence_pg/001_task_persistence_up.sql
+
+          python -m pytest tests/test_tasks_submit.py -q -rA \
+            --junitxml=.ci-reports/pg_smoke_submit.xml
+
+      - name: Run RabbitMQ E2E gate (required)
+        id: rabbitmq_gate
+        env:
+          RABBITMQ_E2E_REQUIRED: "true"
+        run: python -m pytest tests/test_tasks_rabbitmq_e2e.py -q -rA \
+          --junitxml=.ci-reports/rabbitmq_e2e.xml
+
+      - name: Run RabbitMQ + PostgreSQL integration gate (required)
+        id: pg_rabbitmq_gate
+        env:
+          RABBITMQ_E2E_REQUIRED: "true"
+          TASK_PERSISTENCE_BACKEND: postgres
+          TASK_QUEUE_BACKEND: rabbitmq
+          DATABASE_URL: postgresql://heliora:heliora_pg_pass@127.0.0.1:5432/heliora_taskdb
+        run: |
+          set -euo pipefail
+          export PGPASSWORD="heliora_pg_pass"
+
+          cleanup() {
+            psql -h 127.0.0.1 -U heliora -d heliora_taskdb -v ON_ERROR_STOP=1 \
+              -f sql/task_persistence_pg/001_task_persistence_down.sql || true
+          }
+          trap cleanup EXIT
+
+          psql -h 127.0.0.1 -U heliora -d heliora_taskdb -v ON_ERROR_STOP=1 \
+            -f sql/task_persistence_pg/001_task_persistence_up.sql
+
+          python -m pytest tests/test_tasks_rabbitmq_e2e.py -q -rA \
+            --junitxml=.ci-reports/pg_rabbitmq_integration.xml
+
+      - name: Run backend tests with coverage gate
+        id: coverage_gate
+        run: |
+          python -m pytest --cov=app --cov-report=term-missing \
+            --cov-report=xml:.ci-reports/coverage.xml \
+            --cov-fail-under=70 -q \
+            --junitxml=.ci-reports/coverage_tests.xml
+
+      - name: Run ANN audit (non-blocking)
+        id: ann_audit
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          python -m ruff check app tests scripts --select ANN | tee .ci-reports/ann_audit.txt
+          exit_code=${PIPESTATUS[0]}
+          echo "ann_exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit ${exit_code}
+
+      - name: Upload gate reports artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-rabbitmq-gate-reports
+          path: heliora_backend/.ci-reports
+          if-no-files-found: warn
+
+      - name: Publish gate summary
+        if: always()
+        run: |
+          {
+            echo "## Backend RabbitMQ Gate Summary"
+            echo ""
+            echo "| Gate | Outcome |"
+            echo "| --- | --- |"
+            echo "| env consistency | ${{ steps.env_gate.outcome }} |"
+            echo "| ruff | ${{ steps.ruff_gate.outcome }} |"
+            echo "| mypy | ${{ steps.mypy_gate.outcome }} |"
+            echo "| postgres smoke | ${{ steps.pg_smoke_gate.outcome }} |"
+            echo "| rabbitmq e2e | ${{ steps.rabbitmq_gate.outcome }} |"
+            echo "| rabbitmq + postgres integration | ${{ steps.pg_rabbitmq_gate.outcome }} |"
+            echo "| coverage | ${{ steps.coverage_gate.outcome }} |"
+            echo "| ann audit (non-blocking) | ${{ steps.ann_audit.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
