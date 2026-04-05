@@ -31,14 +31,15 @@
 2. 复制远程 URL（HTTPS）。
 3. 绑定并推送：
    - git remote add origin <你的仓库URL>
-   - git branch -M main
-   - git push -u origin main
+   - git branch -M master
+   - git push -u origin master
 
 说明：
 1. HTTPS 推送可能要求 Token，按 GitHub 网页指引使用 PAT。
-2. 若远程已存在同名仓库且有初始提交，先拉取再推：
-   - git pull --rebase origin main
-   - git push -u origin main
+2. 若远程默认分支是 `main`，将上述命令中的 `master` 替换为 `main`。
+3. 若远程已存在同名仓库且有初始提交，先拉取再推：
+   - git pull --rebase origin master
+   - git push -u origin master
 
 ---
 
@@ -100,3 +101,63 @@
    - /e/Miniconda03/envs/Heliora/python.exe scripts/validate_env_consistency.py --env-file .env
 3. Git Bash 无 conda 命令：
    - 处理：不依赖 conda activate，直接使用解释器绝对路径。
+
+---
+
+## 7. FAQ：本地化部署为什么仍要测云端 CI？
+
+1. 本地化部署关注“系统运行在哪里”；云端 CI 关注“改动是否被统一验证并可追溯”。
+2. 云端 CI 不会改变部署位置，只负责标准化门禁（lint/type/test/coverage/integration）与证据归档（run + artifact）。
+3. 如果只有本地通过、没有云端 run/artifact 证据，发布评审很难做跨人复核，风险不可见。
+4. 结论：本地部署与云端测试并不冲突，发布窗口需要两者同时成立。
+
+---
+
+## 8. 2026-04-05 实操复盘（可复用模板）
+
+### 8.1 本地四项检查执行记录
+
+| 命令 | 目的 | 结果 |
+| --- | --- | --- |
+| `bash scripts/preflight_release_window_vm.sh` | 一键预检 | PASS |
+| `bash scripts/run_task_persistence_pg_matrix_vm.sh` | VM 矩阵回归 | PASS |
+| `bash scripts/rehearse_task_persistence_cutover_rollback_vm.sh` | 切换 + 回滚演练 | PASS |
+| `python scripts/validate_env_consistency.py --env-file .env` | 环境一致性校验 | PASS |
+
+阶段结论：VM 侧前置条件已满足；若需要发布签字，仍需补齐云端 CI run 与 artifact 证据。
+
+### 8.2 Git 配置与推送问题处理
+
+问题 1：`git commit` 报错 `Author identity unknown`。
+
+处理命令：
+1. `git config --global user.name "InfiniX520"`
+2. `git config --global user.email "172117778+InfiniX520@users.noreply.github.com"`
+
+问题 2：首次推送被 GitHub 拒绝（GH007 隐私邮箱策略）。
+
+根因：提交作者邮箱为主机默认邮箱（`Administrator@DESKTOP-...`），不符合 GitHub 隐私策略。
+
+处理命令：
+1. `git config --global user.email "172117778+InfiniX520@users.noreply.github.com"`
+2. `git commit --amend --reset-author --no-edit`
+3. `git push -u origin master --force`
+
+结果：推送成功，仓库地址为 `https://github.com/InfiniX520/Heliora`。
+
+### 8.3 PR 无差异与 CI 触发判定
+
+现象：`base: master` 与 `compare: master` 无差异，PR 页面无法形成有效对比。
+
+说明：这不代表 CI 不会触发。当前 workflow 已监听 `master` push，直接推送到 `master` 也会触发 `Backend RabbitMQ Gate`。
+
+确认方式：
+1. 打开 Actions 页面，核对最新 run（如 `23993195493`）状态与结论。
+2. 若未触发新 run，可执行空提交触发：
+   - `git commit --allow-empty -m "chore: trigger backend rabbitmq gate"`
+   - `git push origin master`
+
+### 8.4 文档回填位置
+
+1. 发布执行单：`项目设计/05-实施与交付/05-发布窗口切流执行单.md`（8.1）
+2. 证据总索引：`项目设计/05-实施与交付/07-发布证据索引与检索指南.md`
